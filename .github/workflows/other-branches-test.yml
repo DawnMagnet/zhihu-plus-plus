@@ -50,6 +50,7 @@ jobs:
         run: |
           bash ./gradlew assembleFullDebug
           bash ./gradlew assembleLiteDebug
+          bash ./gradlew assembleLiteRelease
         env:
           CI_BUILD_MINIFY: false
       - name: Move files
@@ -59,6 +60,7 @@ jobs:
           mv app/build/outputs/apk/full/debug/app-full-debug.apk app/build/upload/zhihu++-full-debug.apk
           cp app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload/zhihu++-lite-debug.apk
           mv app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload-lite/zhihu++-lite-debug.apk
+          cp app/build/outputs/apk/lite/release/app-lite-release.apk app/build/upload/zhihu++-lite-release.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -69,3 +71,8 @@ jobs:
         with:
           name: PR Debug artifacts (Lite)
           path: app/build/upload-lite/
+      - name: Upload lite release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lite-release
+          path: app/build/upload/zhihu++-lite-release.apk

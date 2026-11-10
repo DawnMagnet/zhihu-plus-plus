@@ -3,8 +3,9 @@ kotlin = "2.4.21"
 agp = "9.5.1"
 ksp = "2.3.13"
 compose = "1.12.2"
-# Compose Multiplatform 1.12.2 publishes this Material 3 artifact. It is the
-# newest Material 3 that ships with a stable Compose Multiplatform release.
+# MotionScheme.expressive() and MaterialTheme's motionScheme parameter are
+# internal in the latest stable Compose Material 3 (1.9.0). They are public in
+# the 1.12.0-alpha03 artifact that ships with Compose Multiplatform 1.12.2.
 composeMaterial3 = "1.12.0-alpha03"
 ktlint = "14.2.0"
 aboutlibraries = "15.3.0"

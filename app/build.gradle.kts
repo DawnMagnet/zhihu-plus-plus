@@ -110,9 +110,14 @@ android {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
             manifestPlaceholders["zhihuBuildType"] = "release"
             manifestPlaceholders["zhihuGitHash"] = gitHash
-            if (System.getenv("signingKey") != null) {
-                signingConfig = signingConfigs["env"]
-            }
+            // Release signing secrets are optional. Fork and PR builds sign with the
+            // debug key so the lite release APK is installable.
+            signingConfig =
+                if (System.getenv("signingKey") != null) {
+                    signingConfigs.getByName("env")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
     }
     compileOptions {

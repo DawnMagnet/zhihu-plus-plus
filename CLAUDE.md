@@ -270,7 +270,7 @@ Markdown 及其 LaTeX、CodeHigh 支持模块使用已发布的 Maven 构件，�
     - `src/main`: 共享代码
     - `src/full`: Full variant（含 NLP）
     - `src/lite`: Lite variant（轻量级）
-- **Module**: `sentence_embeddings`（Rust tokenizer，仅 full variant）
+- **Module**: `sentence_embeddings`（Kotlin WordPiece 分词，仅 full variant；推理仍用 ONNX Runtime）
 
 ### Build Variants
 - **lite**: 轻量版 (~4MB)，无 ML 功能，包名 `com.github.zly2006.zhplus.lite`
