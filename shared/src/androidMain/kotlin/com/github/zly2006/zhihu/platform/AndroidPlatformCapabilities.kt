@@ -280,14 +280,22 @@ actual fun PlatformPredictiveBackHandler(
     onProgress: (Float) -> Unit,
     onCancel: () -> Unit,
     onBack: () -> Unit,
-) = PredictiveBackHandler(enabled = enabled) { progress ->
-    try {
-        progress.collect { backEvent ->
-            onProgress(backEvent.progress)
+) {
+    val predictiveBackEnabled = androidSettingsStore(LocalContext.current)
+        .getBoolean("enable_predictive_back", true)
+    if (!predictiveBackEnabled) {
+        BackHandler(enabled = enabled, onBack = onBack)
+        return
+    }
+    PredictiveBackHandler(enabled = enabled) { progress ->
+        try {
+            progress.collect { backEvent ->
+                onProgress(backEvent.progress)
+            }
+            onBack()
+        } catch (e: CancellationException) {
+            onCancel()
+            throw e
         }
-        onBack()
-    } catch (e: CancellationException) {
-        onCancel()
-        throw e
     }
 }

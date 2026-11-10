@@ -19,30 +19,9 @@ package com.github.zly2006.zhihu.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import com.materialkolor.dynamicColorScheme
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-)
+import com.materialkolor.material3.dynamicColorScheme
 
 @Composable
 fun ZhihuTheme(
@@ -53,18 +32,15 @@ fun ZhihuTheme(
     val darkTheme = ThemeManager.isDarkTheme()
     val platformDynamicColorScheme = platformDynamicColorScheme(darkTheme)
 
-    val baseColorScheme = when {
-        useDynamicColor && platformDynamicColorScheme != null -> platformDynamicColorScheme
-        !useDynamicColor -> {
-            dynamicColorScheme(
-                seedColor = ThemeManager.getCustomColor(),
-                isDark = darkTheme,
-                isAmoled = false,
-            )
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    // Android 12+ uses the wallpaper (Monet) scheme. Everywhere else, including
+    // older Android and desktop, build a full Material scheme from the saved seed
+    // instead of the leftover purple template.
+    val wallpaperScheme = if (useDynamicColor) platformDynamicColorScheme else null
+    val baseColorScheme = wallpaperScheme ?: dynamicColorScheme(
+        seedColor = ThemeManager.getCustomColor(),
+        isDark = darkTheme,
+        isAmoled = false,
+    )
 
     val colorScheme = baseColorScheme.copy(
         background = customBackgroundColor,
@@ -76,6 +52,7 @@ fun ZhihuTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        motionScheme = MotionScheme.expressive(),
         content = content,
     )
 }
