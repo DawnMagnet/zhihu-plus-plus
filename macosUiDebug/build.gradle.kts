@@ -54,8 +54,8 @@ kotlin {
             implementation(project(":shared"))
             implementation(compose.runtime)
             implementation(compose.ui)
-            implementation("org.jetbrains.compose.ui:ui-test:1.11.1")
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+            implementation(libs.compose.ui.test)
+            implementation(libs.serialization.json)
         }
     }
 }

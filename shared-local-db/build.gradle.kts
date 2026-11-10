@@ -77,24 +77,24 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            api("androidx.room:room-runtime:2.8.4")
-            api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+            api(libs.room.runtime)
+            api(libs.coroutines.core)
+            implementation(libs.serialization.json)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
         jvmMain.dependencies {
-            implementation("androidx.sqlite:sqlite-bundled:2.6.2")
+            implementation(libs.sqlite.bundled)
         }
         nativeMain.dependencies {
-            implementation("androidx.sqlite:sqlite-bundled:2.6.2")
+            implementation(libs.sqlite.bundled)
         }
     }
 }
 
 dependencies {
-    add("kspAndroid", "androidx.room:room-compiler:2.8.4")
-    add("kspJvm", "androidx.room:room-compiler:2.8.4")
-    add("kspMacosArm64", "androidx.room:room-compiler:2.8.4")
+    add("kspAndroid", libs.room.compiler)
+    add("kspJvm", libs.room.compiler)
+    add("kspMacosArm64", libs.room.compiler)
 }
