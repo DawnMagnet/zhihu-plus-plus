@@ -1,5 +1,7 @@
 # Rust source code to expose HuggingFace Tokenizers
 
+The Android app no longer builds this crate. Full-flavor tokenization is the Kotlin WordPiece port in `sentence_embeddings`. This directory remains as the original JNI wrapper.
+
 The [HuggingFace Tokenziers](https://github.com/huggingface/tokenizers) are authored in Rust, and can be installed as a Rust crate. We write a simple interface with JNI that helps us create a `Tokenzier` from the file `tokenizer.json` and tokenize the given text and return the `ids` and `attention_mask`.
 
 The `ids` and `attention_mask` are returned as in the JSON format as a `jstring` (Java `String`) which is then deserialized on the Android side. This crate compiles and generates dynamic libraries (`.so`) for four architectures required by Android apps (ARM 32-bit/64-bit and x86 32-bit/64-bit).

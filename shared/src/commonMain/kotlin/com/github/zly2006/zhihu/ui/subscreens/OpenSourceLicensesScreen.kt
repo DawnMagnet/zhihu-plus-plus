@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -60,47 +59,12 @@ val fullVariantManualLibraries = listOf(
         url = "https://github.com/shubham0204/Sentence-Embeddings-Android",
         icon = { Icon(Icons.Default.Memory, contentDescription = null) },
     ),
-    ManualLicenseEntry(
-        name = "huggingface/tokenizers 0.22.2",
-        license = "Apache-2.0",
-        summary = "huggingface tokenizer",
-        url = "https://github.com/huggingface/tokenizers",
-        icon = { Icon(Icons.Default.DataObject, contentDescription = null) },
-    ),
-    ManualLicenseEntry(
-        name = "jni 0.21.1",
-        license = "MIT/Apache-2.0",
-        summary = "Rust JNI 绑定。",
-        url = "https://github.com/jni-rs/jni-rs",
-        icon = { Icon(Icons.Default.DataObject, contentDescription = null) },
-    ),
-    ManualLicenseEntry(
-        name = "bytes 1.11.1",
-        license = "MIT",
-        summary = "Rust bytes 缓冲区库。",
-        url = "https://github.com/tokio-rs/bytes",
-        icon = { Icon(Icons.Default.DataObject, contentDescription = null) },
-    ),
-    ManualLicenseEntry(
-        name = "serde 1.0.228",
-        license = "MIT OR Apache-2.0",
-        summary = "Rust 序列化框架。",
-        url = "https://github.com/serde-rs/serde",
-        icon = { Icon(Icons.Default.DataObject, contentDescription = null) },
-    ),
-    ManualLicenseEntry(
-        name = "serde_json 1.0.149",
-        license = "MIT OR Apache-2.0",
-        summary = "Rust JSON 序列化实现。",
-        url = "https://github.com/serde-rs/json",
-        icon = { Icon(Icons.Default.DataObject, contentDescription = null) },
-    ),
 )
 
 /**
  * 开源许可列表内容。
  *
- * 许可证主体由 about-libraries 生成，手动维护项用于补充当前工具无法自动识别的 Rust/Full variant 依赖。新增依赖时应优先让
+ * 许可证主体由 about-libraries 生成，手动维护项用于补充当前工具无法自动识别的 Full variant 依赖。新增依赖时应优先让
  * 构建系统生成许可证；只有无法自动发现时再加入 [manualLibraries]。
  */
 @Suppress("DEPRECATION")
