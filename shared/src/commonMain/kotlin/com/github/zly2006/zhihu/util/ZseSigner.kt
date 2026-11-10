@@ -20,6 +20,14 @@
 
 package com.github.zly2006.zhihu.util
 
+/**
+ * Pure Kotlin port of `rs-zse-sign`. The ciphertext matches the Rust `encrypt_zse_v4` output
+ * byte for byte, including the fixed prefix byte.
+ *
+ * zse-v4.js uses `Math.floor(Math.random() * 127)` as that prefix. The Rust signer pins
+ * `Math.random` to `0.1`, so the prefix is always `floor(0.1 * 127) = 12`. The plaintext is
+ * `12 || 0x00 || encodeURIComponent(input)`, then PKCS#7 and the 16-byte block cipher.
+ */
 object ZseSigner {
     private val ZK = uintArrayOf(
         1170614578u, 1024848638u, 1413669199u, 3951632832u, 3528873006u, 2921909214u, 4151847688u, 3997739139u,
@@ -46,7 +54,10 @@ object ZseSigner {
 
     private const val ALPHABET = "6fpLRqJO8M/c3jnYxFkUVC4ZIG12SiH=5v0mXDazWBTsuw7QetbKdoPyAl+hN9rgE"
     private val KEY16 = "059053f7d15e01d7".encodeToByteArray()
-    private val HEX = "0123456789ABCDEF".toCharArray()
+    private val HEX = "0123456789ABCDEF".encodeToByteArray()
+    private val REVERSE_ALPHABET = IntArray(128) { 255 }.also { reverse ->
+        ALPHABET.forEachIndexed { index, char -> reverse[char.code] = index }
+    }
 
     private fun readU32Be(b: ByteArray, off: Int): Int = ((b[off].toInt() and 0xFF) shl 24) or
         ((b[off + 1].toInt() and 0xFF) shl 16) or
@@ -61,32 +72,24 @@ object ZseSigner {
     }
 
     private fun gTransform(tt: Int): Int {
-        val te0 = tt ushr 24 and 0xFF
-        val te1 = tt ushr 16 and 0xFF
-        val te2 = tt ushr 8 and 0xFF
-        val te3 = tt and 0xFF
         val ti =
-            ((ZB[te0] and 0xFF) shl 24) or
-                ((ZB[te1] and 0xFF) shl 16) or
-                ((ZB[te2] and 0xFF) shl 8) or
-                (ZB[te3] and 0xFF)
-
-        return ti xor (ti).rotateLeft(2) xor (ti).rotateLeft(10) xor
-            (ti).rotateLeft(18) xor (ti).rotateLeft(24)
+            (ZB[tt ushr 24 and 0xFF] shl 24) or
+                (ZB[tt ushr 16 and 0xFF] shl 16) or
+                (ZB[tt ushr 8 and 0xFF] shl 8) or
+                ZB[tt and 0xFF]
+        return ti xor ti.rotateLeft(2) xor ti.rotateLeft(10) xor ti.rotateLeft(18) xor ti.rotateLeft(24)
     }
 
-    private fun rBlock(input16: ByteArray): ByteArray {
+    private fun rBlock(input16: ByteArray, keyOffset: (Int) -> Int): ByteArray {
         val tr = IntArray(36)
         tr[0] = readU32Be(input16, 0)
         tr[1] = readU32Be(input16, 4)
         tr[2] = readU32Be(input16, 8)
         tr[3] = readU32Be(input16, 12)
-
         for (i in 0 until 32) {
-            val ta = gTransform(tr[i + 1] xor tr[i + 2] xor tr[i + 3] xor ZK[i].toInt())
+            val ta = gTransform(tr[i + 1] xor tr[i + 2] xor tr[i + 3] xor keyOffset(i))
             tr[i + 4] = tr[i] xor ta
         }
-
         return ByteArray(16).also {
             writeU32Be(tr[35], it, 0)
             writeU32Be(tr[34], it, 4)
@@ -94,6 +97,10 @@ object ZseSigner {
             writeU32Be(tr[32], it, 12)
         }
     }
+
+    private fun encryptBlock(input16: ByteArray): ByteArray = rBlock(input16) { ZK[it].toInt() }
+
+    private fun decryptBlock(input16: ByteArray): ByteArray = rBlock(input16) { ZK[31 - it].toInt() }
 
     private fun xBlocks(data: ByteArray, iv0: ByteArray): ByteArray {
         var iv = iv0
@@ -105,7 +112,7 @@ object ZseSigner {
             for (i in 0 until 16) {
                 mixed[i] = (data[off + i].toInt() xor iv[i].toInt()).toByte()
             }
-            iv = rBlock(mixed)
+            iv = encryptBlock(mixed)
             iv.copyInto(out, outOff, 0, 16)
             off += 16
             outOff += 16
@@ -113,69 +120,177 @@ object ZseSigner {
         return out
     }
 
-    private fun customEncode(bytesIn: ByteArray): String {
-        var bytes = bytesIn
-        val rem = bytes.size % 3
-        if (rem != 0) {
-            bytes += ByteArray(3 - rem)
+    private fun encodeUriComponent(input: String): ByteArray {
+        val raw = input.encodeToByteArray()
+        val out = ArrayList<Byte>(raw.size * 3)
+        for (byte in raw) {
+            val value = byte.toInt() and 0xFF
+            val unescaped = value in 'A'.code..'Z'.code ||
+                value in 'a'.code..'z'.code ||
+                value in '0'.code..'9'.code ||
+                value == '-'.code ||
+                value == '_'.code ||
+                value == '.'.code ||
+                value == '!'.code ||
+                value == '~'.code ||
+                value == '*'.code ||
+                value == '\''.code ||
+                value == '('.code ||
+                value == ')'.code
+            if (unescaped) {
+                out += byte
+            } else {
+                out += '%'.code.toByte()
+                out += HEX[value ushr 4]
+                out += HEX[value and 0x0F]
+            }
         }
+        return out.toByteArray()
+    }
 
+    private fun customEncode(bytesIn: ByteArray): String {
+        val rem = bytesIn.size % 3
+        val bytes = if (rem == 0) bytesIn else bytesIn + ByteArray(3 - rem)
         val out = StringBuilder((bytes.size / 3) * 4)
         var i = 0
         var p = bytes.size - 1
-
         while (p >= 0) {
             var v = 0
-
             val b0 = bytes[p].toInt() and 0xFF
             val m0 = 58 ushr (8 * (i % 4)) and 0xFF
             i += 1
-            v = v or ((b0 xor m0) and 0xFF)
-
+            v = v or (b0 xor m0)
             val b1 = bytes[p - 1].toInt() and 0xFF
             val m1 = 58 ushr (8 * (i % 4)) and 0xFF
             i += 1
-            v = v or (((b1 xor m1) and 0xFF) shl 8)
-
+            v = v or ((b1 xor m1) shl 8)
             val b2 = bytes[p - 2].toInt() and 0xFF
             val m2 = 58 ushr (8 * (i % 4)) and 0xFF
             i += 1
-            v = v or (((b2 xor m2) and 0xFF) shl 16)
-
+            v = v or ((b2 xor m2) shl 16)
             out.append(ALPHABET[v and 63])
             out.append(ALPHABET[(v ushr 6) and 63])
             out.append(ALPHABET[(v ushr 12) and 63])
             out.append(ALPHABET[(v ushr 18) and 63])
-
             p -= 3
         }
-
         return out.toString()
     }
 
     fun encryptZseV4(input: String): String {
-        val plain = ArrayList<Byte>(input.length + 32)
-        plain += 210.toByte()
-        plain += 0.toByte()
-        plain.addAll(input.encodeToByteArray().asList())
-
+        val encoded = encodeUriComponent(input)
+        val plain = ByteArray(2 + encoded.size)
+        plain[0] = 12
+        plain[1] = 0
+        encoded.copyInto(plain, 2)
         val pad = 16 - (plain.size % 16)
-        repeat(pad) { plain += pad.toByte() }
-
-        val plainBytes = plain.toByteArray()
+        val padded = ByteArray(plain.size + pad)
+        plain.copyInto(padded)
+        for (index in plain.size until padded.size) {
+            padded[index] = pad.toByte()
+        }
         val first = ByteArray(16)
         for (i in 0 until 16) {
-            first[i] = (plainBytes[i].toInt() xor KEY16[i].toInt() xor 42).toByte()
+            first[i] = (padded[i].toInt() xor KEY16[i].toInt() xor 42).toByte()
         }
-
-        val c0 = rBlock(first)
-        val cipher = ByteArray(plainBytes.size)
-        c0.copyInto(cipher, 0, 0, 16)
-        if (plainBytes.size > 16) {
-            val rest = xBlocks(plainBytes.copyOfRange(16, plainBytes.size), c0)
-            rest.copyInto(cipher, 16, 0, rest.size)
+        val c0 = encryptBlock(first)
+        val cipher = ByteArray(padded.size)
+        c0.copyInto(cipher)
+        if (padded.size > 16) {
+            xBlocks(padded.copyOfRange(16, padded.size), c0).copyInto(cipher, 16)
         }
-
         return customEncode(cipher)
+    }
+
+    fun decryptZseV4(encoded: String): String {
+        val cipher = decodeCustom(encoded)
+        val plain = ByteArray(cipher.size)
+        val first = decryptBlock(cipher.copyOfRange(0, 16))
+        for (i in 0 until 16) {
+            plain[i] = (first[i].toInt() xor KEY16[i].toInt() xor 42).toByte()
+        }
+        var previous = cipher
+        var offset = 16
+        while (offset < cipher.size) {
+            val chunk = cipher.copyOfRange(offset, offset + 16)
+            val decrypted = decryptBlock(chunk)
+            for (i in 0 until 16) {
+                plain[offset + i] = (decrypted[i].toInt() xor previous[i].toInt()).toByte()
+            }
+            previous = chunk
+            offset += 16
+        }
+        val unpadded = pkcs7Unpad(plain)
+        require(unpadded.size >= 2 && unpadded[1] == 0.toByte()) { "invalid plaintext header" }
+        return decodeUriComponent(unpadded.copyOfRange(2, unpadded.size)).decodeToString()
+    }
+
+    private fun decodeCustom(encoded: String): ByteArray {
+        require(encoded.length % 4 == 0) { "invalid encoded length" }
+        val processed = ByteArray((encoded.length / 4) * 3)
+        var i = 0
+        var out = 0
+        var p = 0
+        val bytes = encoded.encodeToByteArray()
+        while (p < bytes.size) {
+            val indices = IntArray(4) { index ->
+                val char = bytes[p + index].toInt() and 0xFF
+                require(char < 128) { "invalid alphabet char" }
+                val decoded = REVERSE_ALPHABET[char]
+                require(decoded != 255) { "invalid alphabet char" }
+                decoded
+            }
+            p += 4
+            val value = indices[0] or (indices[1] shl 6) or (indices[2] shl 12) or (indices[3] shl 18)
+            for (shift in intArrayOf(0, 8, 16)) {
+                val mask = (58 ushr (8 * (i % 4))) and 0xFF
+                i += 1
+                processed[out++] = (((value ushr shift) and 0xFF) xor mask).toByte()
+            }
+        }
+        processed.reverse()
+        val trim = processed.size % 16
+        require(trim <= 2) { "invalid block alignment" }
+        val cipher = processed.copyOf(processed.size - trim)
+        require(cipher.isNotEmpty() && cipher.size % 16 == 0) { "invalid ciphertext length" }
+        return cipher
+    }
+
+    private fun pkcs7Unpad(bytes: ByteArray): ByteArray {
+        require(bytes.isNotEmpty()) { "empty plaintext" }
+        val pad = bytes.last().toInt() and 0xFF
+        require(pad in 1..16 && pad <= bytes.size) { "invalid pkcs7 padding" }
+        require((0 until pad).all { (bytes[bytes.size - 1 - it].toInt() and 0xFF) == pad }) {
+            "invalid pkcs7 padding"
+        }
+        return bytes.copyOf(bytes.size - pad)
+    }
+
+    private fun decodeUriComponent(input: ByteArray): ByteArray {
+        val out = ArrayList<Byte>(input.size)
+        var i = 0
+        while (i < input.size) {
+            if (input[i] == '%'.code.toByte()) {
+                require(i + 2 < input.size) { "invalid percent encoding" }
+                val high = hexValue(input[i + 1])
+                val low = hexValue(input[i + 2])
+                out += ((high shl 4) or low).toByte()
+                i += 3
+            } else {
+                out += input[i]
+                i += 1
+            }
+        }
+        return out.toByteArray()
+    }
+
+    private fun hexValue(byte: Byte): Int {
+        val value = byte.toInt() and 0xFF
+        return when (value) {
+            in '0'.code..'9'.code -> value - '0'.code
+            in 'a'.code..'f'.code -> value - 'a'.code + 10
+            in 'A'.code..'F'.code -> value - 'A'.code + 10
+            else -> throw IllegalArgumentException("invalid percent encoding")
+        }
     }
 }

@@ -15,6 +15,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+// The app signs requests with the Kotlin port in `ZseSigner`. This crate remains the
+// reference implementation: `ZseSignerTest` compares against ciphertext produced here.
 use jni::objects::{JClass, JString};
 use jni::sys::jstring;
 use jni::JNIEnv;
