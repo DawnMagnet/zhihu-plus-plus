@@ -2,22 +2,24 @@
 kotlin = "2.4.21"
 agp = "9.5.1"
 ksp = "2.3.13"
-compose = "1.12.2"
-# MotionScheme.expressive() and MaterialTheme's motionScheme parameter are
-# internal in the latest stable Compose Material 3 (1.9.0). They are public in
-# the 1.12.0-alpha03 artifact that ships with Compose Multiplatform 1.12.2.
-composeMaterial3 = "1.12.0-alpha03"
+# Keep Compose 1.11.1. 1.12 removes Selectable/SelectionLayoutBuilder and
+# Image.encodeToData members that markdown-renderer 0.1.0-alpha.1 calls.
+# aboutlibraries 15.3.0 also pulls Compose 1.12 and must stay at 15.0.0.
+compose = "1.11.1"
+composeMaterial3 = "1.10.0-alpha05"
 ktlint = "14.2.0"
-aboutlibraries = "15.3.0"
+aboutlibraries = "15.0.0"
 coroutines = "1.11.0"
 ktor = "3.6.1"
-coil = "3.6.3"
-navigation = "2.10.0"
-lifecycle = "2.11.0"
+# Coil 3.6.3 depends on Compose foundation 1.12.0, which breaks markdown-renderer 0.1.0-alpha.1.
+coil = "3.5.0"
+navigation = "2.9.2"
+lifecycle = "2.10.0"
+lifecycleAndroid = "2.11.0"
 serialization = "1.12.0"
 datetime = "0.8.0"
 kotlinxIo = "0.8.2"
-materialKolor = "6.0.0"
+materialKolor = "4.1.1"
 ksoup = "0.2.6"
 room = "2.8.5"
 sqlite = "2.6.2"
@@ -27,7 +29,7 @@ coreKtx = "1.19.1"
 media = "1.7.1"
 webkit = "1.16.0"
 appcompat = "1.7.1"
-navigationEvent = "1.1.2"
+navigationEvent = "1.0.1"
 zxingEmbedded = "4.3.0"
 zxingCore = "3.5.4"
 jsoup = "1.22.2"
@@ -64,8 +66,8 @@ coil-gif = { module = "io.coil-kt.coil3:coil-gif", version.ref = "coil" }
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigation" }
 lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
-lifecycle-livedata-ktx = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "lifecycle" }
-material-kolor = { module = "com.materialkolor:material-kolor-material3", version.ref = "materialKolor" }
+lifecycle-livedata-ktx = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "lifecycleAndroid" }
+material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
 aboutlibraries-compose = { module = "com.mikepenz:aboutlibraries-compose-m3", version.ref = "aboutlibraries" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMaterial3" }

@@ -28,11 +28,10 @@ plugins {
     id("org.jlleitschuh.gradle.ktlint")
 }
 
-// Force Material 3 to the artifact shipped with Compose Multiplatform 1.12.
-// material-kolor 6 strictly constrains this version in common metadata, but that
-// constraint does not reach jvmMain/androidMain. Without the force, platform
-// compilations resolve an older Material 3 and common code that uses the newer
-// API fails with invisible/HIDDEN references.
+// Force Material 3 to 1.10.0-alpha05, the version material-kolor 4.1.1 requires.
+// That constraint stays in common metadata and does not reach jvmMain/androidMain.
+// Without the force, platform compilations resolve a different Material 3 and
+// common code fails with invisible/HIDDEN references.
 configurations.configureEach {
     resolutionStrategy {
         force("org.jetbrains.compose.material3:material3:${libs.versions.composeMaterial3.get()}")

@@ -25,13 +25,9 @@ import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
-import androidx.compose.foundation.gestures.DraggableAnchors
-import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.ScrollScope
-import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -45,7 +41,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ConsumeSwipeWithinBottomSheetBoundsNestedScrollConnection
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheetDialog
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetState
@@ -54,10 +49,12 @@ import androidx.compose.material3.SheetValue.Hidden
 import androidx.compose.material3.SheetValue.PartiallyExpanded
 import androidx.compose.material3.Surface
 import androidx.compose.material3.contentColorFor
+import androidx.compose.material3.internal.DraggableAnchors
 import androidx.compose.material3.internal.Strings
 import androidx.compose.material3.internal.draggableAnchors
 import androidx.compose.material3.internal.getString
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.value
 import androidx.compose.material3.verticalScaleDown
 import androidx.compose.material3.verticalScaleUp
 import androidx.compose.runtime.Composable
@@ -138,8 +135,10 @@ fun MyModalBottomSheet(
                 }
         }
     }
-    val settleToDismiss: (Float) -> Unit = { _ ->
-        if (!sheetState.isVisible) onDismissRequest()
+    val settleToDismiss: (velocity: Float) -> Unit = {
+        scope
+            .launch { sheetState.settle(it) }
+            .invokeOnCompletion { if (!sheetState.isVisible) onDismissRequest() }
     }
     val predictiveBackProgress = remember { Animatable(initialValue = 0f) }
 
@@ -199,6 +198,7 @@ fun MyModalBottomSheet(
                     // 修复返回键需要按两次才关闭的问题。
                     scope.launch { sheetState.hide() }.invokeOnCompletion { onDismissRequest() }
                 },
+                predictiveBackProgress = predictiveBackProgress,
                 content = dialogContent,
             )
         }
@@ -252,16 +252,15 @@ fun BottomSheet(
     shadowElevation: Dp = 0.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val motionScheme = MaterialTheme.motionScheme
-    val anchoredDraggableMotion: FiniteAnimationSpec<Float> = motionScheme.defaultSpatialSpec()
-    val showMotion: FiniteAnimationSpec<Float> = motionScheme.defaultSpatialSpec()
-    val hideMotion: FiniteAnimationSpec<Float> = motionScheme.fastEffectsSpec()
-    val anchoredDraggableFlingBehavior =
-        AnchoredDraggableDefaults.flingBehavior(
-            state = state.anchoredDraggableState,
-            positionalThreshold = { state.positionalThreshold.invoke() },
-            animationSpec = anchoredDraggableMotion,
-        )
+    val anchoredDraggableMotion: FiniteAnimationSpec<Float> =
+        androidx.compose.material3.tokens.MotionSchemeKeyTokens.DefaultSpatial
+            .value()
+    val showMotion: FiniteAnimationSpec<Float> =
+        androidx.compose.material3.tokens.MotionSchemeKeyTokens.DefaultSpatial
+            .value()
+    val hideMotion: FiniteAnimationSpec<Float> =
+        androidx.compose.material3.tokens.MotionSchemeKeyTokens.FastEffects
+            .value()
     SideEffect {
         state.showMotionSpec = showMotion
         state.hideMotionSpec = hideMotion
@@ -282,7 +281,7 @@ fun BottomSheet(
                                 ConsumeSwipeWithinBottomSheetBoundsNestedScrollConnection(
                                     sheetState = state,
                                     orientation = Orientation.Vertical,
-                                    flingBehavior = anchoredDraggableFlingBehavior,
+                                    onFling = settleToDismiss,
                                 )
                             },
                         )
@@ -304,35 +303,26 @@ fun BottomSheet(
                         when (state.anchoredDraggableState.targetValue) {
                             Hidden -> Hidden
                             PartiallyExpanded -> {
-                                val hasPartiallyExpandedState = newAnchors.hasPositionFor(PartiallyExpanded)
+                                val hasPartiallyExpandedState = newAnchors.hasAnchorFor(PartiallyExpanded)
                                 if (hasPartiallyExpandedState) {
                                     PartiallyExpanded
-                                } else if (newAnchors.hasPositionFor(Expanded)) {
+                                } else if (newAnchors.hasAnchorFor(Expanded)) {
                                     Expanded
                                 } else {
                                     Hidden
                                 }
                             }
                             Expanded -> {
-                                if (newAnchors.hasPositionFor(Expanded)) Expanded else Hidden
+                                if (newAnchors.hasAnchorFor(Expanded)) Expanded else Hidden
                             }
                         }
                     return@draggableAnchors newAnchors to newTarget
-                }.anchoredDraggable(
-                    state = state.anchoredDraggableState,
+                }.draggable(
+                    state = state.anchoredDraggableState.draggableState,
                     orientation = Orientation.Vertical,
-                    enabled = gesturesEnabled && state.currentValue != Hidden,
-                    flingBehavior = remember(anchoredDraggableFlingBehavior, settleToDismiss) {
-                        object : FlingBehavior {
-                            override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-                                val remaining = with(anchoredDraggableFlingBehavior) {
-                                    performFling(initialVelocity)
-                                }
-                                if (!state.isVisible) settleToDismiss(initialVelocity)
-                                return remaining
-                            }
-                        }
-                    },
+                    enabled = gesturesEnabled && state.isVisible,
+                    startDragImmediately = state.anchoredDraggableState.isAnimationRunning,
+                    onDragStopped = { settleToDismiss(it) },
                 ).semantics {
                     paneTitle = bottomSheetPaneTitle
                     traversalIndex = 0f
@@ -447,7 +437,8 @@ private fun MyBottomSheetScrim(
         val alpha by
             animateFloatAsState(
                 targetValue = if (visible) 1f else 0f,
-                animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
+                animationSpec = androidx.compose.material3.tokens.MotionSchemeKeyTokens.DefaultEffects
+                    .value(),
                 label = "ScrimAlphaAnimation",
             )
         val closeSheet = getString(Strings.CloseSheet)

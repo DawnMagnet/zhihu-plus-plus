@@ -451,7 +451,7 @@ fun AppearanceSettingsScreen(
 
                 SettingItemWithSwitch(
                     title = { Text("使用 Material You 动态取色") },
-                    description = { Text("跟随系统壁纸的 Monet / Material You 动态色（Android 12+）。\n关闭后可以自己设定主题颜色。系统没有壁纸色时，用已保存的主题色生成完整配色。") },
+                    description = { Text("根据系统壁纸自动提取主题色（Android 12+ 可用）。\n关闭后可以自己设定主题颜色。") },
                     checked = useDynamicColor,
                     onCheckedChange = {
                         ThemeManager.setUseDynamicColor(it)
