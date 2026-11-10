@@ -55,7 +55,10 @@ class ZhihuFetchSignatureTest {
 
         assertEquals("101_3_3.0", builder.headers["x-zse-93"])
         assertEquals("fetch", builder.headers["x-requested-with"])
-        assertTrue(builder.headers["x-zse-96"].orEmpty().startsWith("2.0_"))
+        assertEquals(
+            "2.0_0grUSe+gqzIeODknIL9XmOXkz/UvcvSq+9GKW54Z=2YLlz5YZsgI7Sjr734z+1oU",
+            builder.headers["x-zse-96"],
+        )
         assertTrue(HttpHeaders.UserAgent !in builder.headers.names())
     }
 }

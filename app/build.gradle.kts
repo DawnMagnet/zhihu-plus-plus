@@ -110,9 +110,14 @@ android {
             buildConfigField("String", "GIT_HASH", "\"$gitHash\"")
             manifestPlaceholders["zhihuBuildType"] = "release"
             manifestPlaceholders["zhihuGitHash"] = gitHash
-            if (System.getenv("signingKey") != null) {
-                signingConfig = signingConfigs["env"]
-            }
+            // Release signing secrets are optional. Fork and PR builds sign with the
+            // debug key so the lite release APK is installable.
+            signingConfig =
+                if (System.getenv("signingKey") != null) {
+                    signingConfigs.getByName("env")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
     }
     compileOptions {
@@ -180,89 +185,71 @@ tasks.withType<Test>().configureEach {
     )
 }
 
-val ktor = "3.5.0"
-val coil = "3.5.0"
-val aboutLibraries = "15.0.0"
-val composeVersion = "1.11.1"
-val jetbrainsLifecycleVersion = "2.10.0"
-val androidxLifecycleVersion = "2.11.0"
-
-// Force material3 to 1.10.0-alpha05，与 shared 模块保持一致。
-// 根因：shared 模块 commonMain 通过 material-kolor 的 strictly 约束解析到 1.10.0-alpha05，
-// 但平台配置和本模块如果没有 force，会各自解析到不同版本（1.9.0 或 1.11.0-alpha07），
-// 导致运行时类冲突或编译时 internal API 不可见。
+// Keep the app classpath on the same Material 3 artifact as :shared.
 configurations.configureEach {
     resolutionStrategy {
-        force("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
+        force("org.jetbrains.compose.material3:material3:${libs.versions.composeMaterial3.get()}")
     }
 }
 
 dependencies {
     implementation(project(":shared"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-    implementation("io.ktor:ktor-client-core-jvm:$ktor")
-    implementation("io.ktor:ktor-client-android:$ktor")
-    implementation("io.ktor:ktor-client-content-negotiation-jvm:$ktor")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
-    implementation("androidx.browser:browser:1.10.0")
+    implementation(libs.coroutines.core)
+    implementation(libs.ktor.client.core.jvm)
+    implementation(libs.ktor.client.android)
+    implementation(libs.ktor.client.content.negotiation.jvm)
+    implementation(libs.ktor.serialization.json)
+    implementation(libs.datetime)
+    implementation(libs.browser)
 
     implementation("me.zly2006.markdown:markdown-renderer:${property("markdown.version")}")
 
-    implementation("io.coil-kt.coil3:coil-compose:$coil")
-    implementation("io.coil-kt.coil3:coil-network-ktor3-android:$coil")
-    implementation("io.coil-kt.coil3:coil-gif:$coil")
-    // implementation("io.coil-kt.coil3:coil-svg:$coil")
-    implementation("me.saket.telephoto:zoomable-image-coil3:0.19.0")
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.ktor3.android)
+    implementation(libs.coil.gif)
+    implementation(libs.telephoto)
 
-    implementation("com.materialkolor:material-kolor:4.1.1")
+    implementation(libs.material.kolor)
 
-    implementation("org.jsoup:jsoup:1.22.2")
+    implementation(libs.jsoup)
 
     // ZXing for QR code scanning
-    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation(libs.zxing.embedded)
 
-    implementation("androidx.core:core-ktx:1.19.0")
-    // Lifecycle (JetBrains KMP versions)
-    implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:$jetbrainsLifecycleVersion")
-    implementation("org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose:$jetbrainsLifecycleVersion")
-    // LiveData is Android-specific, keep androidx
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:$androidxLifecycleVersion")
-    // Navigation (JetBrains KMP version)
-    //noinspection GradleDependency
-    implementation("org.jetbrains.androidx.navigation:navigation-compose:2.9.2")
+    implementation(libs.core.ktx)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.livedata.ktx)
+    implementation(libs.navigation.compose)
 
-    implementation("androidx.webkit:webkit:1.16.0")
-    implementation("androidx.activity:activity-compose:1.13.0")
-    // Compose (core from JetBrains KMP)
-    implementation("org.jetbrains.compose.runtime:runtime:$composeVersion")
-    implementation("org.jetbrains.compose.foundation:foundation:$composeVersion")
-    implementation("org.jetbrains.compose.material3:material3:1.10.0-alpha05")
-    implementation("org.jetbrains.compose.ui:ui:$composeVersion")
-    implementation("org.jetbrains.compose.ui:ui-graphics:$composeVersion")
-    implementation("org.jetbrains.compose.animation:animation:$composeVersion")
-    implementation("org.jetbrains.compose.animation:animation-core:$composeVersion")
-    implementation("org.jetbrains.compose.components:components-resources-android:$composeVersion")
-    // Compose (AndroidX — icons, tooling, test not available from JetBrains yet)
-    implementation(platform("androidx.compose:compose-bom:2026.06.00"))
+    implementation(libs.webkit)
+    implementation(libs.activity.compose)
+    implementation(libs.compose.runtime)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.graphics)
+    implementation(libs.compose.animation)
+    implementation(libs.compose.animation.core)
+    implementation(libs.compose.components.resources.android)
+    implementation(platform(libs.compose.bom))
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("com.mikepenz:aboutlibraries-compose-m3:$aboutLibraries")
+    implementation(libs.aboutlibraries.compose)
     "fullImplementation"(project(":sentence_embeddings"))
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2026.06.00"))
+    androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 
     // HanLP for Chinese NLP
-    "fullImplementation"("com.hankcs:hanlp:portable-1.8.6")
+    "fullImplementation"(libs.hanlp)
 
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("io.ktor:ktor-client-cio:$ktor")
-    testImplementation("io.ktor:ktor-client-content-negotiation:$ktor")
-    testImplementation("io.ktor:ktor-serialization-kotlinx-json:$ktor")
-    //noinspection GradleDependency
-    androidTestImplementation("androidx.test.ext:junit:1.3.0")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
-    androidTestImplementation("io.ktor:ktor-client-mock:$ktor")
+    testImplementation(libs.junit)
+    testImplementation(libs.ktor.client.cio)
+    testImplementation(libs.ktor.client.content.negotiation)
+    testImplementation(libs.ktor.serialization.json)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.espresso.core)
+    androidTestImplementation(libs.ktor.client.mock)
 }

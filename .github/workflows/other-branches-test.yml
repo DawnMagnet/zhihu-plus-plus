@@ -43,20 +43,6 @@ jobs:
         with:
           # 默认的 tools 包已无法安装；失败记录：https://github.com/zly2006/zhihu-plus-plus/actions/runs/35182179380/job/105076511639
           packages: platform-tools
-      - name: Setup rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          override: true
-
-      - name: Install cargo-ndk
-        run: cargo install cargo-ndk || true
-
-      - name: Add Android Rust targets
-        run: |
-          rustup target add aarch64-linux-android
-          rustup target add armv7-linux-androideabi
-          rustup target add i686-linux-android
-          rustup target add x86_64-linux-android
       - name: Run KtLint
         run: ./gradlew ktlintCheck
       - name: Build App
@@ -64,6 +50,7 @@ jobs:
         run: |
           bash ./gradlew assembleFullDebug
           bash ./gradlew assembleLiteDebug
+          bash ./gradlew assembleLiteRelease
         env:
           CI_BUILD_MINIFY: false
       - name: Move files
@@ -73,6 +60,7 @@ jobs:
           mv app/build/outputs/apk/full/debug/app-full-debug.apk app/build/upload/zhihu++-full-debug.apk
           cp app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload/zhihu++-lite-debug.apk
           mv app/build/outputs/apk/lite/debug/app-lite-debug.apk app/build/upload-lite/zhihu++-lite-debug.apk
+          cp app/build/outputs/apk/lite/release/app-lite-release.apk app/build/upload/zhihu++-lite-release.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -83,3 +71,8 @@ jobs:
         with:
           name: PR Debug artifacts (Lite)
           path: app/build/upload-lite/
+      - name: Upload lite release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lite-release
+          path: app/build/upload/zhihu++-lite-release.apk

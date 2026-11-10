@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.theme
 
 import android.app.Activity
 import android.content.Context
+import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
@@ -95,8 +96,19 @@ actual fun platformDynamicColorScheme(darkTheme: Boolean): ColorScheme? {
 actual fun PlatformSystemBarEffect(darkTheme: Boolean) {
     val view = LocalView.current
     if (view.isInEditMode) return
+    val backgroundColor = ThemeManager.getBackgroundColor().toArgb()
     SideEffect {
         val window = (view.context as? Activity)?.window ?: return@SideEffect
+        // API 36 can paint the theme window background or a contrast scrim into the
+        // status bar after enableEdgeToEdgeCompat(), so the page color never shows.
+        // SystemBarsInstrumentedTest samples that strip and expects the theme background.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
+        }
+        window.setBackgroundDrawable(ColorDrawable(backgroundColor))
+        window.decorView.findViewById<android.view.View>(android.R.id.content)?.setPadding(0, 0, 0, 0)
         WindowCompat.getInsetsController(window, view).apply {
             isAppearanceLightStatusBars = !darkTheme
             isAppearanceLightNavigationBars = !darkTheme

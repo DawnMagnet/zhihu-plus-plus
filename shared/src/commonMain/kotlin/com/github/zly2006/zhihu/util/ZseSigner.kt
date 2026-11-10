@@ -153,6 +153,13 @@ object ZseSigner {
         return out.toString()
     }
 
+    /**
+     * 线上实际发送的 zse-v4 密文。Android、桌面和 macOS 都走这一个实现：
+     * `x-zse-96` 经 [com.github.zly2006.zhihu.util.ZhihuFetchSignature.createZse96Header]，
+     * 登录刷新经 [com.github.zly2006.zhihu.util.ZhihuCredentialRefresher]。
+     * 前缀字节是 210，正文是原始 UTF-8，不做 encodeURIComponent。
+     * 仓库里曾经有的 Rust JNI 入口没有被任何平台加载。
+     */
     fun encryptZseV4(input: String): String {
         val plain = ArrayList<Byte>(input.length + 32)
         plain += 210.toByte()
